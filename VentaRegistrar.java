@@ -1,3 +1,5 @@
+import java.io.BufferedReader;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
@@ -27,6 +29,18 @@ public class VentaRegistrar {
             writer.write("Total: " + total + "\n");
         } catch (IOException e) {
             System.out.println("Error al registrar la venta.");
+        }
+    }
+
+    public void mostrarVentas() {
+        System.out.println("\n--- Ventas del Día ---");
+        try (BufferedReader reader = new BufferedReader(new FileReader(archivoVentas))) {
+            String linea;
+            while ((linea = reader.readLine()) != null) {
+                System.out.println(linea);
+            }
+        } catch (IOException e) {
+            System.out.println("Error al leer el archivo de ventas.");
         }
     }
 }
