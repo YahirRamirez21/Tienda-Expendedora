@@ -58,5 +58,6 @@ public class MaquinaExpendedora {
 
     public void mostrarVentasDelDia() {
         ventaRegistrar.mostrarVentas();
+
     }
 }
