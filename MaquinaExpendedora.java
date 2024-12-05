@@ -1,140 +1,151 @@
-import java.util.Scanner;
-import java.util.ArrayList;
-import java.util.Date;
-import java.text.SimpleDateFormat;
-import java.io.FileWriter;
+import java.io.File;
 import java.io.IOException;
+import java.util.*;
 
 public class MaquinaExpendedora implements Carrito {
+    ArrayList<Producto> productos;
+    private ArrayList<Producto> carrito = new ArrayList<>();
+    private double total = 0;
+    private VentaRegistrar ventaRegistrar;
 
-	 ArrayList<Producto> productos = new ArrayList<>();
-	    ArrayList<String> ventasDelDia = new ArrayList<>();
-	    double total = 0;
+    public MaquinaExpendedora() {
+        this.productos = inicializarProductos();
+        this.ventaRegistrar = new VentaRegistrar("ventas.txt");
+        inicializarArchivoVentas();
+    }
 
-	    public MaquinaExpendedora() {
-	        
-	        productos.add(new Alimento("1", "Gansitos", 10.5, 10));
-	        productos.add(new Alimento("2", "Ruffles", 8.75, 10));
-	        productos.add(new Bebida("3", "Coca-Cola", 15, 20));
-	        productos.add(new Bebida("4", "Pepsi", 14, 20));
-	    }
+    private ArrayList<Producto> inicializarProductos() {
+        ArrayList<Producto> productosIniciales = new ArrayList<>();
+        productosIniciales.add(new Alimento("1", "Gansitos", 10.5, 10));
+        productosIniciales.add(new Alimento("2", "Ruffles", 8.75, 10));
+        productosIniciales.add(new Bebida("3", "Coca-Cola", 15, 20));
+        productosIniciales.add(new Bebida("4", "Pepsi", 14, 20));
+        return productosIniciales;
+    }
 
-	    public void mostrarProductos() {
-	        System.out.println("Productos disponibles:");
-	        System.out.println("Código\tDescripción\tPrecio\tTipo\tInventario");
-	        for (Producto p : productos) {
-	            System.out.println(p.codigo + "\t" + p.descripcion + "\t" + p.precio + "\t" + p.tipo() + "\t" + p.inventario);
-	        }
-	    }
+    private void inicializarArchivoVentas() {
+        try {
+            File file = new File("ventas.txt");
+            if (!file.exists()) {
+                file.createNewFile();
+            }
+        } catch (IOException e) {
+            System.out.println("Error al inicializar el archivo de ventas.");
+        }
+    }
 
-	    public void agregarProducto(String codigo, int cantidad) {
-	        for (Producto p : productos) {
-	            if (p.codigo.equals(codigo)) {
-	                if (p instanceof Alimento) {
-	                    if (p.inventario + cantidad > 10) {
-	                        System.out.println("El contenedor de alimentos está lleno.");
-	                        return;
-	                    }
-	                } else if (p instanceof Bebida) {
-	                    if (p.inventario + cantidad > 20) {
-	                        System.out.println("El contenedor de bebidas está lleno.");
-	                        return;
-	                    }
-	                }
-	                p.inventario += cantidad;
-	                System.out.println("Se han agregado " + cantidad + " unidades de " + p.descripcion + " al inventario.");
-	                return;
-	            }
-	        }
-	        System.out.println("Producto no encontrado.");
-	    }
+    public void mostrarProductos() {
+        System.out.println("\nProductos disponibles:");
+        System.out.println("Código\tDescripción\tPrecio\tTipo\tInventario");
+        for (Producto p : productos) {
+            System.out.println(p.codigo + "\t" + p.descripcion + "\t" + p.precio + "\t" + p.tipo() + "\t" + p.inventario);
+        }
+    }
 
-	    public void agregarProducto(Producto producto) {
-	        if (producto.inventario > 0) {
-	            total += producto.precio;
-	            producto.inventario--;
-	            System.out.println("Se ha agregado " + producto.descripcion + " al carrito.");
-	        } else {
-	            System.out.println("No hay inventario disponible para " + producto.descripcion);
-	        }
-	    }
+    public void agregarProducto(String codigo, int cantidad) {
+        for (Producto p : productos) {
+            if (p.codigo.equals(codigo)) {
+                int capacidadMaxima = p instanceof Alimento ? 10 : 20;
+                if (p.inventario + cantidad > capacidadMaxima) {
+                    System.out.println("El contenedor de " + p.tipo() + "s está lleno.");
+                    return;
+                }
+                p.inventario += cantidad;
+                System.out.println("Se han agregado " + cantidad + " unidades de " + p.descripcion + " al inventario.");
+                return;
+            }
+        }
+        System.out.println("Producto no encontrado.");
+    }
 
-	    public void finalizarCompra() {
-	        if (total == 0) {
-	            System.out.println("No hay productos en el carrito.");
-	            return;
-	        }
+    public void agregarProducto(Producto producto) {
+        if (producto.inventario > 0) {
+            total += producto.precio;
+            producto.inventario--;
+            carrito.add(producto);
+            System.out.println("Se ha agregado " + producto.descripcion + " al carrito.");
+        } else {
+            System.out.println("No hay inventario disponible para " + producto.descripcion);
+        }
+    }
 
-	        System.out.println("\nTotal a pagar: " + total);
-	        Scanner scanner = new Scanner(System.in);
-	        System.out.print("Ingrese la cantidad con la que paga: ");
-	        double pago = scanner.nextDouble();
-	        if (pago < total) {
-	            System.out.println("El pago es insuficiente.");
-	        } else {
-	            double cambio = pago - total;
-	            System.out.println("Cambio a devolver: " + cambio);
-	            // Generar comprobante
-	            generarComprobante();
-	            // Registrar venta del día
-	            registrarVenta();
-	            // Reiniciar carrito y total
-	            productos.forEach(producto -> producto.inventario = 0);
-	            total = 0;
-	        }
-	    }
+    public void finalizarCompra() {
+        if (carrito.isEmpty()) {
+            System.out.println("No hay productos en el carrito.");
+            return;
+        }
 
-	    private void generarComprobante() {
-	        try {
-	            FileWriter writer = new FileWriter("comprobante.txt");
-	            writer.write("Productos comprados:\n");
-	            for (Producto p : productos) {
-	                if (p.inventario < 10) {
-	                    writer.write(p.descripcion + "\n");
-	                }
-	            }
-	            writer.write("Total: " + total);
-	            writer.close();
-	            System.out.println("Se ha generado el comprobante.");
-	        } catch (IOException e) {
-	            System.out.println("Error al generar el comprobante.");
-	        }
-	    }
+        System.out.println("\nTotal a pagar: " + total);
+        Scanner scanner = new Scanner(System.in);
+        System.out.print("Ingrese la cantidad con la que paga: ");
+        double pago = scanner.nextDouble();
 
-	    private void registrarVenta() {
-	        // Obtener la fecha y hora actual
-	        Date fechaHoraActual = new Date();
-	        // Formatear la fecha y hora actual
-	        SimpleDateFormat formatoFechaHora = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss");
-	        String fechaHora = formatoFechaHora.format(fechaHoraActual);
+        if (pago < total) {
+            System.out.println("El pago es insuficiente.");
+        } else {
+            double cambio = pago - total;
+            System.out.println("Cambio a devolver: " + cambio);
+            Comprobante.generarComprobante(carrito, total);
+            ventaRegistrar.registrarVenta(carrito, total);
+            carrito.clear();
+            total = 0;
+        }
+    }
 
-	        // Crear la cadena de venta del día
-	        StringBuilder venta = new StringBuilder();
-	        venta.append("Fecha y hora: ").append(fechaHora).append("\n");
-	        venta.append("Productos comprados:\n");
-	        for (Producto p : productos) {
-	            if (p.inventario < 10) {
-	                venta.append(p.descripcion).append("\n");
-	            }
-	        }
-	        venta.append("Total: ").append(total).append("\n");
+    public void mostrarVentasDelDia() {
+        try (Scanner scanner = new Scanner(new File("ventas.txt"))) {
+            System.out.println("\nVentas del día:");
+            while (scanner.hasNextLine()) {
+                System.out.println(scanner.nextLine());
+            }
+        } catch (IOException e) {
+            System.out.println("Error al leer el archivo de ventas.");
+        }
+    }
 
-	        // Agregar la venta del día a la lista de ventas
-	        ventasDelDia.add(venta.toString());
-	    }
+    public static void main(String[] args) {
+        MaquinaExpendedora maquina = new MaquinaExpendedora();
+        Scanner scanner = new Scanner(System.in);
+        int opcion;
 
-	    public void mostrarVentasDelDia() {
+        do {
+            System.out.println("\n--- Menú ---");
+            System.out.println("1. Mostrar productos disponibles");
+            System.out.println("2. Agregar productos al inventario");
+            System.out.println("3. Agregar productos al carrito");
+            System.out.println("4. Finalizar compra");
+            System.out.println("5. Mostrar ventas del día");
+            System.out.println("6. Salir");
+            System.out.print("Seleccione una opción: ");
+            opcion = scanner.nextInt();
 
-	        if (ventasDelDia.isEmpty()) {
-	            System.out.println("No hay ventas registradas hoy.");
-	            return;
-	        }
-
-	        System.out.println("Ventas del día:");
-	        for (String venta : ventasDelDia) {
-	            System.out.println(venta);
-	        }
-	    }
-	    
-	    
+            switch (opcion) {
+                case 1 -> maquina.mostrarProductos();
+                case 2 -> {
+                    System.out.print("Ingrese el código del producto: ");
+                    String codigo = scanner.next();
+                    System.out.print("Ingrese la cantidad a agregar: ");
+                    int cantidad = scanner.nextInt();
+                    maquina.agregarProducto(codigo, cantidad);
+                }
+                case 3 -> {
+                    System.out.print("Ingrese el código del producto: ");
+                    String codigo = scanner.next();
+                    Producto producto = maquina.productos.stream()
+                            .filter(p -> p.codigo.equals(codigo))
+                            .findFirst()
+                            .orElse(null);
+                    if (producto != null) {
+                        maquina.agregarProducto(producto);
+                    } else {
+                        System.out.println("Producto no encontrado.");
+                    }
+                }
+                case 4 -> maquina.finalizarCompra();
+                case 5 -> maquina.mostrarVentasDelDia();
+                case 6 -> System.out.println("Saliendo...");
+                default -> System.out.println("Opción inválida.");
+            }
+        } while (opcion != 6);
+    }
 }
