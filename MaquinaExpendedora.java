@@ -1,17 +1,15 @@
-import java.io.File;
-import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Scanner;
 
-public class MaquinaExpendedora implements Carrito {
-    ArrayList<Producto> productos;
-    private ArrayList<Producto> carrito = new ArrayList<>();
-    private double total = 0;
-    private VentaRegistrar ventaRegistrar;
+public class MaquinaExpendedora {
+    private final Inventario inventario;
+    private final CarritoDeCompra carrito;
+    private final VentaRegistrar ventaRegistrar;
 
     public MaquinaExpendedora() {
-        this.productos = inicializarProductos();
+        this.inventario = new Inventario(inicializarProductos());
+        this.carrito = new CarritoDeCompra();
         this.ventaRegistrar = new VentaRegistrar("ventas.txt");
-        inicializarArchivoVentas();
     }
 
     private ArrayList<Producto> inicializarProductos() {
@@ -23,129 +21,42 @@ public class MaquinaExpendedora implements Carrito {
         return productosIniciales;
     }
 
-    private void inicializarArchivoVentas() {
-        try {
-            File file = new File("ventas.txt");
-            if (!file.exists()) {
-                file.createNewFile();
-            }
-        } catch (IOException e) {
-            System.out.println("Error al inicializar el archivo de ventas.");
-        }
-    }
-
     public void mostrarProductos() {
-        System.out.println("\nProductos disponibles:");
-        System.out.println("Código\tDescripción\tPrecio\tTipo\tInventario");
-        for (Producto p : productos) {
-            System.out.println(p.codigo + "\t" + p.descripcion + "\t" + p.precio + "\t" + p.tipo() + "\t" + p.inventario);
-        }
+        inventario.mostrarProductos();
     }
 
     public void agregarProducto(String codigo, int cantidad) {
-        for (Producto p : productos) {
-            if (p.codigo.equals(codigo)) {
-                int capacidadMaxima = p instanceof Alimento ? 10 : 20;
-                if (p.inventario + cantidad > capacidadMaxima) {
-                    System.out.println("El contenedor de " + p.tipo() + "s está lleno.");
-                    return;
-                }
-                p.inventario += cantidad;
-                System.out.println("Se han agregado " + cantidad + " unidades de " + p.descripcion + " al inventario.");
-                return;
-            }
-        }
-        System.out.println("Producto no encontrado.");
+        inventario.agregarStock(codigo, cantidad);
     }
 
-    public void agregarProducto(Producto producto) {
-        if (producto.inventario > 0) {
-            total += producto.precio;
-            producto.inventario--;
-            carrito.add(producto);
-            System.out.println("Se ha agregado " + producto.descripcion + " al carrito.");
-        } else {
-            System.out.println("No hay inventario disponible para " + producto.descripcion);
-        }
+    public void agregarProductoAlCarrito(String codigoProducto) {
+        inventario.buscarProducto(codigoProducto).ifPresentOrElse(carrito::agregarProducto,
+                () -> System.out.println("Producto no encontrado."));
     }
 
     public void finalizarCompra() {
-        if (carrito.isEmpty()) {
+        if (carrito.estaVacio()) {
             System.out.println("No hay productos en el carrito.");
             return;
         }
 
-        System.out.println("\nTotal a pagar: " + total);
-        Scanner scanner = new Scanner(System.in);
+        System.out.println("\nTotal a pagar: " + carrito.getTotal());
         System.out.print("Ingrese la cantidad con la que paga: ");
+        Scanner scanner = new Scanner(System.in);
         double pago = scanner.nextDouble();
 
-        if (pago < total) {
+        if (pago < carrito.getTotal()) {
             System.out.println("El pago es insuficiente.");
         } else {
-            double cambio = pago - total;
+            double cambio = pago - carrito.getTotal();
             System.out.println("Cambio a devolver: " + cambio);
-            Comprobante.generarComprobante(carrito, total);
-            ventaRegistrar.registrarVenta(carrito, total);
-            carrito.clear();
-            total = 0;
+            Comprobante.generarComprobante(carrito.getCarrito(), carrito.getTotal());
+            ventaRegistrar.registrarVenta(carrito.getCarrito(), carrito.getTotal());
+            carrito.vaciarCarrito();
         }
     }
 
     public void mostrarVentasDelDia() {
-        try (Scanner scanner = new Scanner(new File("ventas.txt"))) {
-            System.out.println("\nVentas del día:");
-            while (scanner.hasNextLine()) {
-                System.out.println(scanner.nextLine());
-            }
-        } catch (IOException e) {
-            System.out.println("Error al leer el archivo de ventas.");
-        }
-    }
-
-    public static void main(String[] args) {
-        MaquinaExpendedora maquina = new MaquinaExpendedora();
-        Scanner scanner = new Scanner(System.in);
-        int opcion;
-
-        do {
-            System.out.println("\n--- Menú ---");
-            System.out.println("1. Mostrar productos disponibles");
-            System.out.println("2. Agregar productos al inventario");
-            System.out.println("3. Agregar productos al carrito");
-            System.out.println("4. Finalizar compra");
-            System.out.println("5. Mostrar ventas del día");
-            System.out.println("6. Salir");
-            System.out.print("Seleccione una opción: ");
-            opcion = scanner.nextInt();
-
-            switch (opcion) {
-                case 1 -> maquina.mostrarProductos();
-                case 2 -> {
-                    System.out.print("Ingrese el código del producto: ");
-                    String codigo = scanner.next();
-                    System.out.print("Ingrese la cantidad a agregar: ");
-                    int cantidad = scanner.nextInt();
-                    maquina.agregarProducto(codigo, cantidad);
-                }
-                case 3 -> {
-                    System.out.print("Ingrese el código del producto: ");
-                    String codigo = scanner.next();
-                    Producto producto = maquina.productos.stream()
-                            .filter(p -> p.codigo.equals(codigo))
-                            .findFirst()
-                            .orElse(null);
-                    if (producto != null) {
-                        maquina.agregarProducto(producto);
-                    } else {
-                        System.out.println("Producto no encontrado.");
-                    }
-                }
-                case 4 -> maquina.finalizarCompra();
-                case 5 -> maquina.mostrarVentasDelDia();
-                case 6 -> System.out.println("Saliendo...");
-                default -> System.out.println("Opción inválida.");
-            }
-        } while (opcion != 6);
+        ventaRegistrar.mostrarVentas();
     }
 }

@@ -1,0 +1,6 @@
+
+ID Compra: 1
+Fecha y hora: 05-12-2024 13:40:03
+Productos comprados:
+Coca-Cola	15.0
+Total: 15.0
